@@ -1,0 +1,1 @@
+CollabReview is a real-time code review platform. Share a room link, see collaborators' cursors live, leave inline comments that appear instantly, and get syntax error highlighting powered by real backend linting — built on WebSockets and Redis Pub/Sub for horizontal scalability.
