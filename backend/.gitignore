@@ -1,10 +1,29 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+# --- Environment & Configuration ---
+# Hide your secret keys, database credentials, and passwords
+.env
+.env.*
 
-# Virtual environments
-.venv
+# --- Python & UV Virtual Environments ---
+# Hide the uv virtual environment folder
+.venv/
+.uv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Alembic Database Migrations ---
+# Hides the alembic migration scripts and local setup
+alembic/
+alembic.ini
+
+# --- System & Editor Files ---
+# OS specific junk
+.DS_Store
+Thumbs.db
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
