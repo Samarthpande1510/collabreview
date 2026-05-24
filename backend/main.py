@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers.users import router
+from routers.users import router as users_router
+from routers.rooms import router as rooms_router
+
 from fastapi.security import HTTPBearer
 
 security = HTTPBearer()
@@ -10,7 +12,7 @@ app = FastAPI(
     description="Real-time collaborative code review",
     version="1.0.0",
 )
-app.include_router(router, prefix="/auth", tags=["auth"])
+
 
 origins = [
     "http://localhost:3000",  # React default port
@@ -25,6 +27,8 @@ app.add_middleware(
     allow_methods=["*"],             
     allow_headers=["*"],              
 )
+app.include_router(users_router, prefix="/auth", tags=["auth"])
+app.include_router(rooms_router, prefix="/rooms", tags=["rooms"])
 
 @app.get("/")
 def start():

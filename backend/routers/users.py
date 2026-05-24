@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User
-from fastapi.security import HTTPBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Security
 router = APIRouter()
 
@@ -40,8 +40,8 @@ def login(data: LoginReq, db: Session = Depends(get_db)):
 security = HTTPBearer()
 
 @router.delete("/me")
-def delete(authorization: str = Header(...), db: Session = Depends(get_db), credentials: str = Security(security)):
-    token = authorization.replace("Bearer ", "")
+def delete(db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
