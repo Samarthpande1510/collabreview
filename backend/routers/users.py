@@ -34,7 +34,7 @@ def login(data: LoginReq, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
     if not user or not verify_password(data.password,user.password):
         raise HTTPException(status_code=400,detail="Invalid Email or Password")
-    token = create_token({"user_id": user.id, "email": user.email})
+    token = create_token({"user_id": user.id, "email": user.email,"name": user.name})
     return {"token": token, "user_id": user.id}
 
 security = HTTPBearer()
