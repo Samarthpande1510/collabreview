@@ -20,3 +20,9 @@ def create_token(data:dict) -> str:
     payload["exp"] = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return jwt.encode(payload,SECRET_KEY,algorithm=ALGORITHM)
 
+def decode_token(token:str) -> dict:
+    try:
+       return jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
+    except JWTError:
+        return None
+

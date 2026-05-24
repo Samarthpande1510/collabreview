@@ -1,7 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from routers.users import router
+from fastapi.security import HTTPBearer
 
-app = FastAPI()
+security = HTTPBearer()
+
+app = FastAPI(
+    title="CollabReview API",
+    description="Real-time collaborative code review",
+    version="1.0.0",
+)
+app.include_router(router, prefix="/auth", tags=["auth"])
 
 origins = [
     "http://localhost:3000",  # React default port
@@ -20,3 +29,4 @@ app.add_middleware(
 @app.get("/")
 def start():
     return {"message": "CORS configured successfully!"}
+
