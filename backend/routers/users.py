@@ -1,10 +1,11 @@
 from auth import hash_password, verify_password, create_token, decode_token
-from fastapi import APIRouter, Depends, HTTPException, Header, Security
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer
+from fastapi import Security
 router = APIRouter()
 
 class SignupReq(BaseModel):
@@ -39,11 +40,8 @@ def login(data: LoginReq, db: Session = Depends(get_db)):
 security = HTTPBearer()
 
 @router.delete("/me")
-def delete(
-    credentials: HTTPAuthorizationCredentials = Security(security),
-    db: Session = Depends(get_db)
-):
-    token = credentials.credentials
+def delete(authorization: str = Header(...), db: Session = Depends(get_db), credentials: str = Security(security)):
+    token = authorization.replace("Bearer ", "")
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
