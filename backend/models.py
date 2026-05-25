@@ -21,3 +21,12 @@ class Room(Base):
     language = Column(String)
     code_content = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class Comment(Base):
+    __tablename__ = "comments"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    room_id = Column(Integer, ForeignKey("rooms.id"))
+    line_number = Column(Integer)
+    content = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)

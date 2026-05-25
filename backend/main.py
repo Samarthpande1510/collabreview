@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers.users import router as users_router
 from routers.rooms import router as rooms_router
 from routers.ws import router as ws_router
+from routers.comments import router as comments_router
 from fastapi.security import HTTPBearer
 
 security = HTTPBearer()
@@ -30,6 +31,7 @@ app.add_middleware(
 app.include_router(users_router, prefix="/auth", tags=["auth"])
 app.include_router(rooms_router, prefix="/rooms", tags=["rooms"])
 app.include_router(ws_router, tags=["websockets"])
+app.include_router(comments_router, prefix="/comments", tags=["comments"])
 @app.get("/")
 def start():
     return {"message": "CORS configured successfully!"}
