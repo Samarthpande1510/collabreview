@@ -11,6 +11,8 @@ class RoomCreate(BaseModel):
     name: str
     language: str
 
+class ResetToken(BaseModel):
+    share_mode: str = "reviewer"
 
 router = APIRouter()
 
@@ -86,10 +88,11 @@ def join( share_token: str, db: Session = Depends(get_db)):
         "name": can_join.name,
         "language": can_join.language,
         "owner_id": can_join.owner_id,
+        "share_mode": can_join.share_mode
     }
 
 @router.post("/{room_id}/reset-token")
-def reset(room_id: int, db: Session = Depends(get_db),
+def reset(data: ResetToken,room_id: int, db: Session = Depends(get_db),
           credentials: HTTPAuthorizationCredentials = Security(security)):
     token = credentials.credentials
     payload = decode_token(token)
@@ -101,8 +104,50 @@ def reset(room_id: int, db: Session = Depends(get_db),
         raise HTTPException(status_code=404, detail="Room not found!")
     if owner_id != room.owner_id:
         raise HTTPException(status_code=403, detail="Not your Room!")
-    share_token = str(uuid.uuid4())
+    share_token = str(uuid.uuid4())[:8]
     room.share_token = share_token
+    room.share_mode = data.share_mode
     db.commit()
     db.refresh(room)
-    return {"share_token": share_token}
+    return {"share_token": share_token, "share_mode": room.share_mode}
+
+@router.delete("/{room_id}")
+def delete(room_id: int ,db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = payload["user_id"]
+    room = db.query(Room).filter(Room.id == room_id).first() 
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    if room.owner_id != user_id:                             
+        raise HTTPException(status_code=403, detail="You're not the owner")
+    db.delete(room)
+    db.commit()
+    return {"message": "Room deleted", "room_id": room_id}  
+
+class CodeUpdate(BaseModel):
+    code_content: str
+
+@router.patch("/{room_id}/code")
+def update_code(
+    room_id: int,
+    data: CodeUpdate,
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Security(security)
+):
+    token = credentials.credentials
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = payload["user_id"]
+    room = db.query(Room).filter(Room.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    if room.owner_id != user_id and room.share_mode != "editor":
+        raise HTTPException(status_code=403, detail="No edit permission")
+    room.code_content = data.code_content
+    db.commit()
+    db.refresh(room)
+    return {"message": "Code saved", "room_id": room_id}

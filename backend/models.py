@@ -15,13 +15,13 @@ class User(Base):
 class Room(Base):
     __tablename__ = "rooms"
     id = Column(Integer, primary_key=True)
-    share_token = Column(String, default=lambda: str(uuid.uuid4()), unique=True)
+    share_token = Column(String, default=lambda: str(uuid.uuid4())[:8], unique=True)
     name = Column(String)
     owner_id = Column(Integer, ForeignKey("users.id"))
     language = Column(String)
     code_content = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
-
+    share_mode = Column(String, default="reviewer")
 class Comment(Base):
     __tablename__ = "comments"
     id = Column(Integer, primary_key=True)

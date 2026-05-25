@@ -6,9 +6,24 @@ import Navbar from "./Navbar";
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 const LANGUAGES = [
-  "python", "javascript", "typescript", "java", "c",
-  "cpp", "csharp", "go", "rust", "ruby", "php",
-  "swift", "kotlin", "sql", "bash"
+  // Web
+  "javascript", "typescript", "html", "css", "scss",
+  // Backend
+  "python", "java", "csharp", "go", "rust", "ruby",
+  "php", "swift", "kotlin", "scala", "elixir", "haskell",
+  // Systems
+  "c", "cpp",
+  // Data / ML
+  "r", "julia", "sql",
+  // Shell / DevOps
+  "bash", "shell", "powershell", "dockerfile",
+  // Config / Markup
+  "json", "yaml", "toml", "xml", "markdown",
+  // Mobile
+  "dart", "objectivec",
+  // Other
+  "perl", "lua", "groovy", "matlab", "cobol",
+  "fortran", "assembly", "solidity", "graphql"
 ];
 
 export default function Rooms({ user, onLogout }) {
@@ -97,7 +112,28 @@ export default function Rooms({ user, onLogout }) {
     }
     setJoining(false);
   };
-
+  const handleResetToken = async (roomId) => {
+  if (!window.confirm("Reset share link? Old link will stop working.")) return;
+  try {
+    await axios.post(`${API_URL}/rooms/${roomId}/reset-token`, {}, {
+      headers: { Authorization: `Bearer ${user.token}` }
+    });
+    fetchRooms(); // ← refreshes cards with new token
+  } catch (e) {
+    alert("Failed to reset token");
+  }
+};
+  const handleDelete = async (roomId) => {
+  if (!window.confirm("Delete this room?")) return;
+  try {
+    await axios.delete(`${API_URL}/rooms/${roomId}`, {
+      headers: { Authorization: `Bearer ${user.token}` }
+    });
+    fetchRooms(); // ← refresh the grid
+  } catch (e) {
+    alert("Failed to delete room");
+  }
+};
   const copyLink = (token) => {
     navigator.clipboard.writeText(`${window.location.origin}/join/${token}`);
     alert("Share link copied!");
@@ -230,6 +266,12 @@ export default function Rooms({ user, onLogout }) {
                   <button style={s.copyBtn} onClick={() => copyLink(room.share_token)}>
                     Copy link
                   </button>
+                  <button style={s.deleteBtn} onClick={() => handleDelete(room.id)} >
+                        Delete
+                    </button>
+                    <button style={s.resetBtn} onClick={() => handleResetToken(room.id)}>
+                        Reset link
+                    </button>
                 </div>
               </div>
             ))}
@@ -243,7 +285,7 @@ export default function Rooms({ user, onLogout }) {
 const s = {
   page: {
     minHeight: "100vh",
-    backgroundImage: "url('/rooms-bg.jpg')", // ← drop your bg in public/ as rooms-bg.jpg
+    backgroundImage: "url('/room_bg.png')", 
     backgroundSize: "cover",
     backgroundPosition: "center",
     backgroundAttachment: "fixed",
@@ -271,7 +313,7 @@ const s = {
     marginBottom: "2rem",
   },
   title: {
-    color: "#e6edf3",
+    color: "#E64D91",
     fontSize: "2rem",
     fontWeight: 900,
     margin: 0,
@@ -504,6 +546,28 @@ const s = {
     cursor: "pointer",
     fontFamily: "inherit",
   },
+  deleteBtn: {
+  flex: 1,
+  padding: "0.5rem",
+  background: "rgba(248,81,73,0.1)",
+  border: "1px solid rgba(248,81,73,0.25)",
+  borderRadius: "6px",
+  color: "#f85149",
+  fontSize: "0.8rem",
+  cursor: "pointer",
+  fontFamily: "inherit",
+},
+    resetBtn: {
+  flex: 1,
+  padding: "0.5rem",
+  background: "rgba(210,153,34,0.1)",
+  border: "1px solid rgba(210,153,34,0.25)",
+  borderRadius: "6px",
+  color: "#e3b341",
+  fontSize: "0.8rem",
+  cursor: "pointer",
+  fontFamily: "inherit",
+},
   copyBtn: {
     flex: 1,
     padding: "0.5rem",
