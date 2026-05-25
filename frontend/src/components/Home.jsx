@@ -10,14 +10,15 @@ export default function Home({ user, onLogout }) {
       <Navbar user={user} onLogout={onLogout} />
 
       <main style={s.hero}>
-        <p style={s.tagline}>Real-time · Collaborative · Code Review</p>
+        <p style={s.tagline}>Review · Collaborate · Build</p>
         <h1 style={s.heading}>CollabReview</h1>
 
         <div style={s.noteCard}>
           <p style={s.noteText}>
-            {/* ← Write your note here */}
-            Your note about the app goes here. Tell users what CollabReview is,
-            who it's built for, and what inspired you to build it.
+            Hi everyone, welcome to CollabReview, the new generation for online code reviewing. I made this app with the sheer 
+            goal of eliminating the need for scramblin through 10 different websites, just to be able to review/edit code together.
+            It's a problem I have been facing for ages and I have been trying to turn it into a reality for the past few months. This project is really close
+            to my heart and I am grateful to see it in its glory, hopefully making an impact on your life as well. 
           </p>
         </div>
 
@@ -25,7 +26,7 @@ export default function Home({ user, onLogout }) {
           <button style={s.ctaPrimary} onClick={() => navigate("/rooms")}>
             Start reviewing
           </button>
-          <button style={s.ctaSecondary} onClick={() => navigate("/editor")}>
+          <button style={s.ctaPrimary} onClick={() => navigate("/editor")}>
             Try the editor
           </button>
         </div>
@@ -104,7 +105,7 @@ const s = {
   },
   ctaPrimary: {
     padding: "0.8rem 2rem",
-    background: "linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(30,80,255,0.65) 30%, rgba(10,30,180,0.8) 55%, rgba(180,60,0,0.4) 85%, rgba(255,255,255,0.05) 100%)",
+    background: "linear-gradient(135deg, rgba(12, 8, 12, 1) 0%, rgba(165, 30, 95, 0.35) 35%, rgba(195, 105, 70, 0.4) 65%, rgba(135, 25, 75, 0.3) 85%, rgba(6, 4, 6, 1) 100%)",
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
     color: "#fff",
@@ -115,7 +116,9 @@ const s = {
     cursor: "pointer",
     fontFamily: "inherit",
     letterSpacing: "0.04em",
-    boxShadow: "0 0 28px rgba(30,80,255,0.55), 0 0 10px rgba(200,80,0,0.3), inset 0 1px 0 rgba(255,255,255,0.45)",
+    boxShadow: "0 0 32px rgba(80,40,255,0.6), 0 0 8px rgba(220,0,255,0.4), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.3)",
+    textShadow: "0 1px 4px rgba(0,0,0,0.4)",
+    
   },
   ctaSecondary: {
     padding: "0.8rem 2rem",

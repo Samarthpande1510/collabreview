@@ -289,8 +289,7 @@ const s = {
   btn: {
   width: "100%",
   padding: "0.85rem",
-  background: "linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(80,40,255,0.7) 25%, rgba(60,20,220,0.8) 50%, rgba(180,0,255,0.5) 75%, rgba(255,255,255,0.1) 100%)",
-  backdropFilter: "blur(12px)",
+  background: "linear-gradient(135deg, rgba(12, 12, 20, 1) 0%, rgba(20, 45, 110, 0.45) 30%, rgba(130, 20, 35, 0.45) 55%, rgba(95, 25, 135, 0.5) 75%, rgba(8, 8, 14, 1) 100%)",
   WebkitBackdropFilter: "blur(12px)",
   color: "#fff",
   border: "1px solid rgba(255,255,255,0.25)",
