@@ -30,6 +30,27 @@ def create(data: RoomCreate,credentials: HTTPAuthorizationCredentials = Security
     db.refresh(room)
     return {"message": "Room created!","id": room.id,"share_token": room.share_token}
 
+@router.get("/")
+def getroom(credentials: HTTPAuthorizationCredentials = Security(security),db: Session = Depends(get_db)):
+    token = credentials.credentials
+    payload = decode_token(token=token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    owner_id = payload["user_id"]
+    owner = db.query(Room).filter(Room.owner_id == owner_id).all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "language": c.language,
+            "share_token": c.share_token,
+            "created_at": c.created_at
+
+        }
+        for c in owner
+    ]
+    
+     
 @router.get("/{room_id}") 
 def roomdetails(
                 room_id: int,
