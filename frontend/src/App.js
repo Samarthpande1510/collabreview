@@ -14,11 +14,12 @@ function JoinRedirect({ user }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log("token:", token)
     axios.get(`${API_URL}/rooms/join/${token}`)
-      .then(res => navigate(`/rooms/${res.data.room_id}`, { 
-  state: { share_mode: res.data.share_mode } 
-}))
+      .then(res => {
+        // Store token for this room so guest stays joined on refresh
+        localStorage.setItem(`cr_room_${res.data.room_id}`, token);
+        navigate(`/rooms/${res.data.room_id}`);
+      })
       .catch(() => {
         alert("Invalid or expired token");
         navigate("/rooms");

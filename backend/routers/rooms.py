@@ -2,11 +2,16 @@ from fastapi import APIRouter, HTTPException, Security, Depends
 from sqlalchemy.orm import Session
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
-from pydantic import BaseModel
 from database import get_db
 from auth import decode_token
-from models import User, Room
+from models import Room
+from connection_manager import manager
 import uuid
+import json
+
+router = APIRouter()
+security = HTTPBearer()
+
 class RoomCreate(BaseModel):
     name: str
     language: str
@@ -14,46 +19,55 @@ class RoomCreate(BaseModel):
 class ResetToken(BaseModel):
     share_mode: str = "reviewer"
 
-router = APIRouter()
+class CodeUpdate(BaseModel):
+    code_content: str
 
-security = HTTPBearer()
 @router.post("/create")
-def create(data: RoomCreate,credentials: HTTPAuthorizationCredentials = Security(security), 
-           db: Session = Depends(get_db)):
+def create(
+    data: RoomCreate,
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db: Session = Depends(get_db)
+):
     token = credentials.credentials
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid Token")
     owner_id = payload["user_id"]
     share_token = str(uuid.uuid4())[:8]
-    room = Room(share_token=share_token,name = data.name,language= data.language,owner_id = owner_id)
+    room = Room(share_token=share_token, name=data.name, language=data.language, owner_id=owner_id)
     db.add(room)
     db.commit()
     db.refresh(room)
-    return {"message": "Room created!","id": room.id,"share_token": room.share_token}
+    return {"message": "Room created!", "id": room.id, "share_token": room.share_token}
 
 @router.get("/")
-def getroom(credentials: HTTPAuthorizationCredentials = Security(security),db: Session = Depends(get_db)):
+def getroom(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db: Session = Depends(get_db)
+):
     token = credentials.credentials
     payload = decode_token(token=token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
     owner_id = payload["user_id"]
-    owner = db.query(Room).filter(Room.owner_id == owner_id).all()
+    rooms = db.query(Room).filter(Room.owner_id == owner_id).all()
     return [
         {
-            "id": c.id,
-            "name": c.name,
-            "language": c.language,
-            "share_token": c.share_token,
-            "created_at": c.created_at
-
+            "id": r.id,
+            "name": r.name,
+            "language": r.language,
+            "share_token": r.share_token,
+            "created_at": r.created_at
         }
-        for c in owner
+        for r in rooms
     ]
-    
+
 @router.get("/info/{room_id}")
-def room_info(room_id: int, credentials: HTTPAuthorizationCredentials = Security(security), db: Session = Depends(get_db)):
+def room_info(
+    room_id: int,
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db: Session = Depends(get_db)
+):
     token = credentials.credentials
     payload = decode_token(token)
     if not payload:
@@ -70,50 +84,55 @@ def room_info(room_id: int, credentials: HTTPAuthorizationCredentials = Security
         "share_mode": room.share_mode,
         "share_token": room.share_token,
     }
- 
-@router.get("/{room_id}") 
-def roomdetails(
-                room_id: int,
-                 db: Session = Depends(get_db),
-                 credentials: HTTPAuthorizationCredentials = Security(security)):
 
+@router.get("/join/{share_token}")
+def join(share_token: str, db: Session = Depends(get_db)):
+    room = db.query(Room).filter(Room.share_token == share_token).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="No such Room!")
+    return {
+        "room_id": room.id,
+        "name": room.name,
+        "language": room.language,
+        "owner_id": room.owner_id,
+        "share_mode": room.share_mode,
+        "code_content": room.code_content,
+        "share_token": room.share_token,
+    }
+
+@router.get("/{room_id}")
+def roomdetails(
+    room_id: int,
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db: Session = Depends(get_db)
+):
     token = credentials.credentials
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
+    owner_id = payload["user_id"]
     room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found!")
-    owner_id = payload["user_id"]
     if room.owner_id != owner_id:
         raise HTTPException(status_code=403, detail="Not your room!")
     return {
-    "id": room.id,
-    "name": room.name,
-    "language": room.language,
-    "owner_id": room.owner_id, 
-    "share_token": room.share_token,
-    "code_content": room.code_content,
-    "share_mode": room.share_mode,
-}
-
-
-@router.get("/join/{share_token}")
-def join( share_token: str, db: Session = Depends(get_db)):
-    can_join = db.query(Room).filter(Room.share_token == share_token).first()
-    if not can_join:
-        raise HTTPException(status_code=404, detail="No such Room!")
-    return {
-        "room_id": can_join.id,
-        "name": can_join.name,
-        "language": can_join.language,
-        "owner_id": can_join.owner_id,
-        "share_mode": can_join.share_mode
+        "id": room.id,
+        "name": room.name,
+        "language": room.language,
+        "owner_id": room.owner_id,
+        "share_token": room.share_token,
+        "code_content": room.code_content,
+        "share_mode": room.share_mode,
     }
 
 @router.post("/{room_id}/reset-token")
-def reset(data: ResetToken,room_id: int, db: Session = Depends(get_db),
-          credentials: HTTPAuthorizationCredentials = Security(security)):
+def reset(
+    data: ResetToken,
+    room_id: int,
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db: Session = Depends(get_db)
+):
     token = credentials.credentials
     payload = decode_token(token)
     if not payload:
@@ -132,30 +151,31 @@ def reset(data: ResetToken,room_id: int, db: Session = Depends(get_db),
     return {"share_token": share_token, "share_mode": room.share_mode}
 
 @router.delete("/{room_id}")
-def delete(room_id: int ,db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Security(security)):
+def delete(
+    room_id: int,
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db: Session = Depends(get_db)
+):
     token = credentials.credentials
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
     user_id = payload["user_id"]
-    room = db.query(Room).filter(Room.id == room_id).first() 
+    room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    if room.owner_id != user_id:                             
+    if room.owner_id != user_id:
         raise HTTPException(status_code=403, detail="You're not the owner")
     db.delete(room)
     db.commit()
-    return {"message": "Room deleted", "room_id": room_id}  
-
-class CodeUpdate(BaseModel):
-    code_content: str
+    return {"message": "Room deleted", "room_id": room_id}
 
 @router.patch("/{room_id}/code")
-def update_code(
+async def update_code(
     room_id: int,
     data: CodeUpdate,
-    db: Session = Depends(get_db),
-    credentials: HTTPAuthorizationCredentials = Security(security)
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db: Session = Depends(get_db)
 ):
     token = credentials.credentials
     payload = decode_token(token)
@@ -169,5 +189,17 @@ def update_code(
         raise HTTPException(status_code=403, detail="No edit permission")
     room.code_content = data.code_content
     db.commit()
-    db.refresh(room)
+    room.code_content = data.code_content
+    db.commit()
+    print(f"Broadcasting code_update to room {room_id}")
+    print(f"Active connections: {manager.active_connections.keys()}")
+    try:
+        await manager.broadcast(int(room_id), json.dumps({
+            "type": "code_update",
+            "code": data.code_content,
+            "user_id": user_id
+        }))
+        print("Broadcast sent successfully")
+    except Exception as e:
+        print(f"Broadcast error: {e}")
     return {"message": "Code saved", "room_id": room_id}

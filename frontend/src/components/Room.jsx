@@ -15,7 +15,9 @@ const showToast = (msg) => {
   setToast(msg);
   setTimeout(() => setToast(""), 2000);
 };
-
+  const [output, setOutput] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [showOutput, setShowOutput] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const shareBtnRef = useRef(null);
@@ -34,6 +36,25 @@ const showToast = (msg) => {
   const wsRef = useRef(null);
   const saveTimer = useRef(null);
 
+
+  const JUDGE0_LANGUAGES = {
+  python: { id: 71, name: "Python (3.8.1)" },
+  javascript: { id: 63, name: "JavaScript (Node.js 12.14.0)" },
+  typescript: { id: 74, name: "TypeScript (3.7.4)" },
+  java: { id: 62, name: "Java (OpenJDK 13.0.1)" },
+  c: { id: 50, name: "C (GCC 9.2.0)" },
+  cpp: { id: 54, name: "C++ (GCC 9.2.0)" },
+  csharp: { id: 51, name: "C# (Mono 6.6.0.161)" },
+  go: { id: 60, name: "Go (1.13.5)" },
+  rust: { id: 73, name: "Rust (1.40.0)" },
+  ruby: { id: 72, name: "Ruby (2.7.0)" },
+  php: { id: 68, name: "PHP (7.4.1)" },
+  swift: { id: 83, name: "Swift (5.2.3)" },
+  kotlin: { id: 78, name: "Kotlin (1.3.72)" },
+  bash: { id: 46, name: "Bash (5.0.0)" },
+  sql: { id: 82, name: "SQL (SQLite 3.31.1)" }, // 🔥 Now fully supported!
+};
+
   // ── fetchComments FIRST before any useEffect that uses it ─────────────────
   const fetchComments = useCallback(async () => {
     try {
@@ -49,7 +70,8 @@ const showToast = (msg) => {
   // ── Fetch room ─────────────────────────────────────────────────────────────
  useEffect(() => {
   const fetchRoom = async () => {
-    try {
+  console.log("fetching room:", roomId, "user:", user.userId)
+  try {
       const res = await axios.get(`${API_URL}/rooms/info/${roomId}`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
@@ -59,8 +81,27 @@ const showToast = (msg) => {
         res.data.owner_id === parseInt(user.userId) ||
         res.data.share_mode === "editor"
       );
-    } catch (e) {
-      navigate("/rooms");
+    }  catch (e) {
+      console.log("fetchRoom error:", e.response?.status, e.message)
+      if (e.response?.status === 403) {
+        // Check if we have a stored share token for this room
+        const storedToken = localStorage.getItem(`cr_room_${roomId}`);
+        if (storedToken) {
+          try {
+            const res = await axios.get(`${API_URL}/rooms/join/${storedToken}`);
+            setRoom(res.data);
+            setCode(res.data.code_content || "# Start coding here...");
+            setCanEdit(res.data.share_mode === "editor");
+          } catch {
+            localStorage.removeItem(`cr_room_${roomId}`);
+            navigate("/rooms");
+          }
+        } else {
+          navigate("/rooms");
+        }
+      } else {
+        navigate("/rooms");
+      }
     }
     setLoading(false);
   };
@@ -91,12 +132,16 @@ const showToast = (msg) => {
 
       ws.onmessage = (e) => {
   const msg = JSON.parse(e.data);
-
+    console.log("WS message received:", msg.type, msg)
   if (msg.type === "presence_list") {
-    // Full list of who's already online — set directly
-    setOnline(msg.users.map(name => ({ name })));
-  }
+  setOnline(msg.users.map(name => ({ name })));
+}
 
+  if (msg.type === "code_update") {
+  if (msg.user_id !== parseInt(user.userId)) {
+    setCode(msg.code);
+  }
+}
   if (msg.type === "presence") {
     setOnline(prev => {
       if (msg.event === "joined") {
@@ -107,6 +152,16 @@ const showToast = (msg) => {
       }
     });
   }
+  if (msg.type === "comment_deleted") {
+  setComments(prev => prev.filter(c => c.comment_id !== msg.comment_id));
+}
+
+if (msg.type === "comment_added") {
+  setComments(prev => {
+    if (prev.find(c => c.comment_id === msg.comment.comment_id)) return prev;
+    return [...prev, msg.comment];
+  });
+}
 
   if (msg.type === "comment") {
     fetchComments();
@@ -121,16 +176,17 @@ const showToast = (msg) => {
       ws?.close();
     };
   }, [roomId, user.token, fetchComments]);
-
   // ── Auto-save ──────────────────────────────────────────────────────────────
   const handleCodeChange = (value) => {
-    setCode(value);
-    if (!canEdit) return;
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      setSaving(true);
-      try {
-        await axios.patch(`${API_URL}/rooms/${roomId}/code`,
+  setCode(value);
+  console.log("code changed, canEdit:", canEdit) 
+  if (!canEdit) return;
+  clearTimeout(saveTimer.current);
+  saveTimer.current = setTimeout(async () => {
+    console.log("auto-saving...")  
+    setSaving(true);
+    try {
+      await axios.patch(`${API_URL}/rooms/${roomId}/code`,
           { code_content: value },
           { headers: { Authorization: `Bearer ${user.token}` } }
         );
@@ -174,6 +230,56 @@ const showToast = (msg) => {
     URL.revokeObjectURL(url);
   };
 
+const handleRun = async () => {
+  const lang = JUDGE0_LANGUAGES[room?.language?.toLowerCase()];
+  
+  if (!lang) {
+    setOutput({ error: `${room?.language} execution not supported` });
+    setShowOutput(true);
+    return;
+  }
+  
+  setRunning(true);
+  setShowOutput(true);
+  setOutput(null);
+
+  try {
+    // 🚀 THE FIX: Changed to ce.judge0.com (The free, public CORS-allowed demo route)
+    const res = await fetch("https://ce.judge0.com/submissions?base64_encoded=false&wait=true", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        source_code: code || '\n',
+        language_id: lang.id
+      })
+    });
+
+    if (!res.ok) {
+      if (res.status === 429) {
+        setOutput({ error: "Rate limit reached (Max 5 runs per minute allowed on the demo server)." });
+      } else {
+        const errText = await res.text();
+        setOutput({ error: `Demo Server Error (${res.status}): ${errText}` });
+      }
+      setRunning(false);
+      return;
+    }
+
+    const data = await res.json();
+    
+    // Direct plain text mapping straight into the UI states
+    setOutput({
+      stdout: data.stdout || "",
+      stderr: data.stderr || data.compile_output || "",
+      code: data.status?.id === 3 ? 0 : data.status?.id || 1,
+    });
+  } catch (e) {
+    setOutput({ error: "Network error: Failed to connect to the Judge0 demo server." });
+  }
+  setRunning(false);
+};
   // ── Add comment ────────────────────────────────────────────────────────────
   const handleAddComment = async () => {
     if (!commentLine || !commentText) return;
@@ -220,28 +326,31 @@ const showToast = (msg) => {
 };
 
   if (loading) return <div style={s.loadingPage}>Loading room...</div>;
-
-  return (
+return (
     <div style={s.page}>
       <div style={s.overlay} />
-        {toast && (
-  <div style={{
-    position: "fixed",
-    bottom: "1.5rem",
-    right: "1.5rem",
-    background: "rgba(57,211,83,0.15)",
-    border: "1px solid rgba(57,211,83,0.3)",
-    color: "#39d353",
-    padding: "0.6rem 1.2rem",
-    borderRadius: "8px",
-    fontSize: "0.82rem",
-    backdropFilter: "blur(12px)",
-    zIndex: 100,
-    fontFamily: "inherit",
-  }}>
-    {toast}
-  </div>
-)}
+      
+      {/* --- 1. TOAST NOTIFICATION FLOATER --- */}
+      {toast && (
+        <div style={{
+          position: "fixed",
+          bottom: "1.5rem",
+          right: "1.5rem",
+          background: "rgba(57,211,83,0.15)",
+          border: "1px solid rgba(57,211,83,0.3)",
+          color: "#39d353",
+          padding: "0.6rem 1.2rem",
+          borderRadius: "8px",
+          fontSize: "0.82rem",
+          backdropFilter: "blur(12px)",
+          zIndex: 100,
+          fontFamily: "inherit",
+        }}>
+          {toast}
+        </div>
+      )}
+
+      {/* --- 2. GLOBAL FIXED HEADER BAR --- */}
       <div style={s.topBar}>
         <div style={s.topLeft}>
           <span style={s.roomName}>{room?.name}</span>
@@ -250,6 +359,7 @@ const showToast = (msg) => {
           {!saving && canEdit && <span style={s.savedText}>saved</span>}
           {!canEdit && <span style={s.readOnlyText}>read-only</span>}
         </div>
+        
         <div style={s.topRight}>
           <div style={s.presence}>
             {online.map((u, i) => (
@@ -258,81 +368,125 @@ const showToast = (msg) => {
               </div>
             ))}
           </div>
-          <div style={{ position: "relative" }}>
-  <button
-    ref={shareBtnRef}
-    style={s.topBtn}
-    onClick={() => setShowShare(v => !v)}
-  >
-    Share
-  </button>
+          
+          {/* Action Actionable Cluster Wrapper */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", position: "relative" }}>
+            <button
+              ref={shareBtnRef}
+              style={s.topBtn}
+              onClick={() => setShowShare(v => !v)}
+            >
+              Share
+            </button>
+            
+            <button
+              style={{
+                ...s.topBtn,
+                color: running ? "#8b949e" : "#39d353",
+                borderColor: running ? "rgba(255,255,255,0.1)" : "rgba(57,211,83,0.3)",
+                background: running ? "rgba(255,255,255,0.05)" : "rgba(57,211,83,0.1)"
+              }}
+              onClick={handleRun}
+              disabled={running}
+            >
+              {running ? "Running..." : "▶ Run"}
+            </button>
 
-  {showShare && (
-    <div ref={sharePopoverRef} style={s.sharePopover}>
-      <div style={s.shareNotch} />
-      <p style={s.shareTitle}>Share room</p>
+            {showShare && (
+              <div ref={sharePopoverRef} style={s.sharePopover}>
+                <div style={s.shareNotch} />
+                <p style={s.shareTitle}>Share room</p>
 
-      <div style={s.shareTokenRow}>
-        <span style={s.shareToken}>{room?.share_token}</span>
-        <button style={s.shareCopyBtn} onClick={() => {
-          navigator.clipboard.writeText(room?.share_token || "");
-          showToast("Token copied!");
-        }}>
-          Copy
-        </button>
-      </div>
+                <div style={s.shareTokenRow}>
+                  <span style={s.shareToken}>{room?.share_token}</span>
+                  <button style={s.shareCopyBtn} onClick={() => {
+                    navigator.clipboard.writeText(room?.share_token || "");
+                    showToast("Token copied!");
+                  }}>
+                    Copy
+                  </button>
+                </div>
 
-      <p style={s.shareLabel}>Current mode: <span style={{
-        color: room?.share_mode === "editor" ? "#39d353" : "#e3b341"
-      }}>{room?.share_mode}</span></p>
+                <p style={s.shareLabel}>Current mode: <span style={{
+                  color: room?.share_mode === "editor" ? "#39d353" : "#e3b341"
+                }}>{room?.share_mode}</span></p>
 
-      <p style={s.shareLabel}>Generate new link as:</p>
-      <div style={s.shareBtns}>
-        <button
-          style={{ ...s.shareModeBtn, opacity: shareLoading ? 0.6 : 1 }}
-          onClick={() => handleResetToken("reviewer")}
-          disabled={shareLoading}
-        >
-          Reviewer
-        </button>
-        <button
-          style={{ ...s.shareModeBtn, color: "#39d353", borderColor: "rgba(57,211,83,0.3)", background: "rgba(57,211,83,0.08)", opacity: shareLoading ? 0.6 : 1 }}
-          onClick={() => handleResetToken("editor")}
-          disabled={shareLoading}
-        >
-          Editor
-        </button>
-      </div>
-    </div>
-  )}
-</div>
+                <p style={s.shareLabel}>Generate new link as:</p>
+                <div style={s.shareBtns}>
+                  <button
+                    style={{ ...s.shareModeBtn, opacity: shareLoading ? 0.6 : 1 }}
+                    onClick={() => handleResetToken("reviewer")}
+                    disabled={shareLoading}
+                  >
+                    Reviewer
+                  </button>
+                  <button
+                    style={{ ...s.shareModeBtn, color: "#39d353", borderColor: "rgba(57,211,83,0.3)", background: "rgba(57,211,83,0.08)", opacity: shareLoading ? 0.6 : 1 }}
+                    onClick={() => handleResetToken("editor")}
+                    disabled={shareLoading}
+                  >
+                    Editor
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          
           <button style={s.topBtn} onClick={handleDownload}>Download</button>
           <button style={s.backBtn} onClick={() => navigate("/rooms")}>← Rooms</button>
         </div>
       </div>
 
+      {/* --- 3. MAIN CO-WORKING WORKSPACE CONTAINER --- */}
       <div style={s.layout}>
+        
+        {/* --- LEFT HAND SECTION: MAIN CORE EDITOR & OUTPUT DOCK --- */}
         <div style={s.editorPanel}>
-          <Editor
-            height="100%"
-            language={room?.language || "python"}
-            value={code}
-            theme="collabreview-dark-trans"          
-            beforeMount={handleEditorWillMount} 
-            onChange={handleCodeChange}
-            options={{
-              readOnly: !canEdit,
-              fontSize: 14,
-              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-              minimap: { enabled: false },
-              lineNumbers: "on",
-              scrollBeyondLastLine: false,
-              padding: { top: 16 },
-              smoothScrolling: true,
-            }}
-          />
+          <div style={{ flex: 1, minHeight: 0, height: "100%" }}>
+            <Editor
+              height="100%"
+              language={room?.language || "python"}
+              value={code}
+              theme="collabreview-dark-trans"          
+              beforeMount={handleEditorWillMount} 
+              onChange={handleCodeChange}
+              options={{
+                readOnly: !canEdit,
+                fontSize: 14,
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                minimap: { enabled: false },
+                lineNumbers: "on",
+                scrollBeyondLastLine: false,
+                padding: { top: 16 },
+                smoothScrolling: true,
+              }}
+            />
+          </div>
+
+          {/* Conditional Executable Log Terminal Dropdown */}
+          {showOutput && (
+            <div style={s.outputPanel}>
+              <div style={s.outputHeader}>
+                <span style={s.outputTitle}>Output</span>
+                <span style={s.outputStatus}>
+                  {running ? "running..." : output?.code === 0 ? "exited 0" : output?.code !== undefined ? `exited ${output.code}` : ""}
+                </span>
+                <span style={s.outputClose} onClick={() => setShowOutput(false)}>✕</span>
+              </div>
+              <div style={s.outputContent}>
+                {running && <span style={{ color: "#8b949e" }}>Executing...</span>}
+                {output?.error && <span style={{ color: "#f85149" }}>{output.error}</span>}
+                {output?.stdout && <span style={{ color: "#39d353" }}>{output.stdout}</span>}
+                {output?.stderr && <span style={{ color: "#f85149" }}>{output.stderr}</span>}
+                {output && !output.stdout && !output.stderr && !output.error && (
+                  <span style={{ color: "#8b949e" }}>No output</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* --- RIGHT HAND SECTION: SIDEBAR SYSTEM DISCUSSIONS --- */}
         <div style={s.commentsPanel}>
           <p style={s.commentsTitle}>Comments</p>
           <div style={s.commentsList}>
@@ -383,8 +537,9 @@ const showToast = (msg) => {
               {addingComment ? "Adding..." : "Add comment"}
             </button>
           </div>
-        </div>
-      </div>
+        </div> {/* End commentsPanel */}
+
+      </div> {/* End layout */}
     </div>
   );
 }
@@ -504,6 +659,9 @@ const s = {
   editorPanel: {
   flex: 1,
   backdropFilter: "blur(12px)",
+  display: "flex",        
+  flexDirection: "column",
+  overflow: "hidden", 
 },
   commentsPanel: {
   width: "280px",
@@ -688,4 +846,45 @@ shareModeBtn: {
   cursor: "pointer",
   fontFamily: "inherit",
 },
+outputPanel: {
+  height: "200px",
+  borderTop: "1px solid rgba(57,211,83,0.2)",
+  background: "rgba(0,0,0,0.8)",
+  display: "flex",
+  flexDirection: "column",
+},
+outputHeader: {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.75rem",
+  padding: "0.4rem 1rem",
+  borderBottom: "1px solid rgba(57,211,83,0.1)",
+},
+outputTitle: {
+  color: "#39d353",
+  fontSize: "0.72rem",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  flex: 1,
+},
+outputStatus: {
+  color: "#8b949e",
+  fontSize: "0.72rem",
+},
+outputClose: {
+  color: "#484f58",
+  fontSize: "0.72rem",
+  cursor: "pointer",
+},
+outputContent: {
+  flex: 1,
+  overflowY: "auto",
+  padding: "0.75rem 1rem",
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: "0.82rem",
+  lineHeight: 1.7,
+  whiteSpace: "pre-wrap",
+},
+
 };
