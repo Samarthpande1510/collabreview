@@ -45,7 +45,7 @@ async def addComment(room_id: int, data: CommentCreate,
     "content": comment.content
 }
 
-@router.get("/{room_id}")
+@router.get("/room/{room_id}")
 async def getComment(room_id: int,credentials: HTTPAuthorizationCredentials = Security(security),
                      db: Session = Depends(get_db)):
     token = credentials.credentials
@@ -55,7 +55,7 @@ async def getComment(room_id: int,credentials: HTTPAuthorizationCredentials = Se
     user_id = payload["user_id"]
     comment = db.query(Comment).filter(Comment.room_id == room_id).all()
     if not comment:
-        raise HTTPException(status_code=404,detail="Room not found")
+        return []
     return [
     {
         "comment_id": c.id,
@@ -78,10 +78,11 @@ def deleteComment(comment_id: int,credentials: HTTPAuthorizationCredentials = Se
     user_id = payload["user_id"]
     comment = db.query(Comment).filter(Comment.id == comment_id).first()
     if not comment:
-        raise HTTPException(status_code=404,detail="Comment does not exist!")
+        return []
     if comment.user_id != user_id:
         raise HTTPException(status_code=403,detail="Not your comment!!")
     db.delete(comment)
     db.commit()
+    
     return {"message":"Comment deleted successfully!","id":comment_id}
     

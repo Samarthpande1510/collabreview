@@ -11,7 +11,7 @@ export default function Navbar({ user, onLogout }) {
         <span style={s.link} onClick={() => navigate("/editor")}>Try Editor</span>
       </div>
       <div style={s.right}>
-        {user?.name && <span style={s.greet}>Hey, {user.name} hope you will enjoy it</span>}
+        {user?.name && <span style={s.greet}>Hey, {user.name} build something great today</span>}
         <span style={s.logout} onClick={onLogout}>Sign out</span>
       </div>
     </nav>
@@ -76,4 +76,10 @@ const s = {
     cursor: "pointer",
     userSelect: "none",
   },
+  Delete :
+  {
+    background: "rgb(100, 0, 0)",
+    color: "white",
+    
+  }
 };

@@ -25,7 +25,7 @@ def create(data: RoomCreate,credentials: HTTPAuthorizationCredentials = Security
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid Token")
     owner_id = payload["user_id"]
-    share_token = str(uuid.uuid4())
+    share_token = str(uuid.uuid4())[:8]
     room = Room(share_token=share_token,name = data.name,language= data.language,owner_id = owner_id)
     db.add(room)
     db.commit()
@@ -52,7 +52,25 @@ def getroom(credentials: HTTPAuthorizationCredentials = Security(security),db: S
         for c in owner
     ]
     
-     
+@router.get("/info/{room_id}")
+def room_info(room_id: int, credentials: HTTPAuthorizationCredentials = Security(security), db: Session = Depends(get_db)):
+    token = credentials.credentials
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    room = db.query(Room).filter(Room.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    return {
+        "id": room.id,
+        "name": room.name,
+        "language": room.language,
+        "code_content": room.code_content,
+        "owner_id": room.owner_id,
+        "share_mode": room.share_mode,
+        "share_token": room.share_token,
+    }
+ 
 @router.get("/{room_id}") 
 def roomdetails(
                 room_id: int,
@@ -70,12 +88,14 @@ def roomdetails(
     if room.owner_id != owner_id:
         raise HTTPException(status_code=403, detail="Not your room!")
     return {
-        "room_id": room.id,
-        "name": room.name,
-        "language": room.language,
-        "owner_id": room.owner_id,
-        "share_token": room.share_token
-    }
+    "id": room.id,
+    "name": room.name,
+    "language": room.language,
+    "owner_id": room.owner_id, 
+    "share_token": room.share_token,
+    "code_content": room.code_content,
+    "share_mode": room.share_mode,
+}
 
 
 @router.get("/join/{share_token}")

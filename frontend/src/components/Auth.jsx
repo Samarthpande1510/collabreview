@@ -21,11 +21,11 @@ export default function Auth({ onLogin }) {
     setLoading(true);
     try {
       if (mode === "signup") {
-        await axios.post(`${API_URL}/auth/signup`, { email, password, name });
+        await axios.post(`${API_URL}/users/signup`, { email, password, name });
         setMode("login");
         setError("Account created. Sign in to continue.");
       } else {
-        const res = await axios.post(`${API_URL}/auth/login`, { email, password });
+        const res = await axios.post(`${API_URL}/users/login`, { email, password });
         const token = res.data.token;
         const userId = String(res.data.user_id);
         localStorage.setItem("cr_token", token);

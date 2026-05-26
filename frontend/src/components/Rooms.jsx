@@ -40,7 +40,11 @@ export default function Rooms({ user, onLogout }) {
   const [joining, setJoining] = useState(false);
   const btnRef = useRef(null);
   const popoverRef = useRef(null);
-
+  const [toast, setToast] = useState("");
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2000);
+  };
   // ── Fetch rooms ────────────────────────────────────────────────────────────
   const fetchRooms = useCallback(async () => {
     try {
@@ -108,7 +112,7 @@ export default function Rooms({ user, onLogout }) {
       const res = await axios.get(`${API_URL}/rooms/join/${shareToken}`);
       navigate(`/rooms/${res.data.room_id}`);
     } catch (e) {
-      alert("Invalid or expired share token");
+      showToast("Invalid or expired share token");
     }
     setJoining(false);
   };
@@ -120,7 +124,7 @@ export default function Rooms({ user, onLogout }) {
     });
     fetchRooms(); // ← refreshes cards with new token
   } catch (e) {
-    alert("Failed to reset token");
+    showToast("Failed to reset token");
   }
 };
   const handleDelete = async (roomId) => {
@@ -131,17 +135,37 @@ export default function Rooms({ user, onLogout }) {
     });
     fetchRooms(); // ← refresh the grid
   } catch (e) {
-    alert("Failed to delete room");
+    showToast("Failed to delete room");
   }
 };
   const copyLink = (token) => {
-    navigator.clipboard.writeText(`${window.location.origin}/join/${token}`);
-    alert("Share link copied!");
-  };
+  navigator.clipboard.writeText(token);
+  showToast("Share token copied!");
+};
 
   return (
     <div style={s.page}>
       <div style={s.overlay} />
+      {/* Toast */}
+    {toast && (
+      <div style={{
+        position: "fixed",
+        bottom: "1.5rem",
+        right: "1.5rem",
+        background: "rgba(57,211,83,0.15)",
+        border: "1px solid rgba(57,211,83,0.3)",
+        color: "#39d353",
+        padding: "0.6rem 1.2rem",
+        borderRadius: "8px",
+        fontSize: "0.82rem",
+        fontFamily: "inherit",
+        backdropFilter: "blur(12px)",
+        zIndex: 100,
+      }}>
+        {toast}
+      </div>
+    )}
+
       <Navbar user={user} onLogout={onLogout} />
 
       <main style={s.main}>
@@ -264,13 +288,13 @@ export default function Rooms({ user, onLogout }) {
                     Open
                   </button>
                   <button style={s.copyBtn} onClick={() => copyLink(room.share_token)}>
-                    Copy link
+                    Copy Token
                   </button>
                   <button style={s.deleteBtn} onClick={() => handleDelete(room.id)} >
                         Delete
                     </button>
                     <button style={s.resetBtn} onClick={() => handleResetToken(room.id)}>
-                        Reset link
+                        Reset Token
                     </button>
                 </div>
               </div>

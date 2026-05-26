@@ -28,7 +28,7 @@ app.add_middleware(
     allow_methods=["*"],             
     allow_headers=["*"],              
 )
-app.include_router(users_router, prefix="/auth", tags=["auth"])
+app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(rooms_router, prefix="/rooms", tags=["rooms"])
 app.include_router(ws_router, tags=["websockets"])
 app.include_router(comments_router, prefix="/comments", tags=["comments"])

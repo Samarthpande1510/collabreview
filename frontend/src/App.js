@@ -1,9 +1,38 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
 import Auth from "./components/Auth";
 import Home from "./components/Home";
 import Rooms from "./components/Rooms";
+import Room from "./components/Room";
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
+// ── Join redirect component — must be outside App ──────────────────────────
+function JoinRedirect({ user }) {
+  const { token } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    console.log("token:", token)
+    axios.get(`${API_URL}/rooms/join/${token}`)
+      .then(res => navigate(`/rooms/${res.data.room_id}`, { 
+  state: { share_mode: res.data.share_mode } 
+}))
+      .catch(() => {
+        alert("Invalid or expired token");
+        navigate("/rooms");
+      });
+  }, [token, navigate]);
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#000", color: "#39d353", fontFamily: "monospace" }}>
+      Joining room...
+    </div>
+  );
+}
+
+// ── Main App ───────────────────────────────────────────────────────────────
 function App() {
   const [user, setUser] = useState(null);
 
@@ -27,6 +56,7 @@ function App() {
     setUser(null);
   };
 
+
   return (
     <BrowserRouter>
       <Routes>
@@ -39,9 +69,14 @@ function App() {
           element={user ? <Rooms user={user} onLogout={handleLogout} /> : <Navigate to="/" />}
         />
         <Route
-          path="*"
-          element={<Navigate to="/" />}
+          path="/rooms/:roomId"
+          element={user ? <Room user={user} onLogout={handleLogout} /> : <Navigate to="/" />}
         />
+        <Route
+          path="/join/:token"
+          element={user ? <JoinRedirect user={user} /> : <Navigate to="/" />}
+        />
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
   );
