@@ -15,7 +15,7 @@ export default function Home({ user, onLogout }) {
 
         <div style={s.noteCard}>
           <p style={s.noteText}>
-            Hi everyone, welcome to CollabReview, the new generation for online code reviewing. I made this app with the sheer 
+            Hi everyone, this is <b>CollabReview</b>, the much needed online code reviewing platform. I made this app with the sheer 
             goal of eliminating the need for scramblin through 10 different websites, just to be able to review/edit code together.
             It's a problem I have been facing for ages and I have been trying to turn it into a reality for the past few months. This project is really close
             to my heart and I am grateful to see it in its glory, hopefully making an impact on your life as well. 
