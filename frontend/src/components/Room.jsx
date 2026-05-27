@@ -16,7 +16,6 @@ export default function Room({ user, onLogout }) {
     setTimeout(() => setToast(""), 2000);
   };
   const [inputData, setInputData] = React.useState("");
-  // ✅ FIX: showInputPanel is now the ONLY thing controlling input bar visibility
   const [showInputPanel, setShowInputPanel] = useState(false);
   const [output, setOutput] = useState(null);
   const [running, setRunning] = useState(false);
@@ -438,7 +437,7 @@ export default function Room({ user, onLogout }) {
           <div style={s.presence}>
             {online.map((u, i) => (
               <div key={i} style={s.avatar} title={u.name}>
-                {u.name[0].toUpperCase()}
+                {u.name}
               </div>
             ))}
           </div>
@@ -457,8 +456,15 @@ export default function Room({ user, onLogout }) {
               style={{
                 ...s.topBtn,
                 color: running ? "#8b949e" : "#39d353",
-                borderColor: running ? "rgba(255,255,255,0.1)" : "rgba(57,211,83,0.3)",
-                background: running ? "rgba(255,255,255,0.05)" : "rgba(57,211,83,0.1)"
+                borderColor: running ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg, #090d0a 0%, #111813 35%, #0b100c 70%, #162219 100%)",
+                border: "1px solid #233528",
+                borderTop: "1px solid #3a543f", // Simulated light hitting the top metallic lip
+                borderLeft: "1px solid #2d4333",
+                boxShadow: "0 12px 40px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+                backdropFilter: "none", // Dropping the glass blur for a solid hardware feel
+                WebkitBackdropFilter: "none",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace",
+                fontSize: "0.9rem"
               }}
               onClick={handleRun}
               disabled={running}
@@ -731,37 +737,52 @@ const s = {
   },
   presence: { display: "flex", gap: "0.3rem" },
   avatar: {
-    width: "28px",
-    height: "28px",
-    borderRadius: "50%",
-    background: "rgba(57,211,83,0.2)",
-    border: "1px solid rgba(57,211,83,0.4)",
-    color: "#39d353",
-    fontSize: "0.75rem",
-    fontWeight: 700,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    padding: "0.4rem 1.2rem", 
+    background: "linear-gradient(135deg, #090d0a 0%, #111813 35%, #0b100c 70%, #162219 100%)",
+    border: "1px solid #233528",
+    borderTop: "1px solid #3a543f", // Simulated light hitting the top metallic lip
+    borderLeft: "1px solid #2d4333",
+    boxShadow: "0 12px 40px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    backdropFilter: "none", // Dropping the glass blur for a solid hardware feel
+    WebkitBackdropFilter: "none",
+    color: "#ffffff",
+    borderRadius: "50px", 
+    fontFamily: "'VT323', monospace",
+    fontSize: "1.1rem", 
+    letterSpacing: "0.05em",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
   },
   topBtn: {
-    padding: "0.35rem 0.85rem",
+    padding: "0.4rem 1.2rem", 
     background: "rgba(255,255,255,0.05)",
     border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "6px",
-    color: "#8b949e",
-    fontSize: "0.78rem",
+    color: "#ffffff",
+    
+    // 🚀 RETRO PILL CONFIGURATIONS
+    borderRadius: "50px", 
+    fontFamily: "'VT323', monospace",
+    fontSize: "1.1rem", 
+    letterSpacing: "0.05em",
+    
     cursor: "pointer",
-    fontFamily: "inherit",
+    transition: "all 0.2s ease",
   },
+  
   backBtn: {
-    padding: "0.35rem 0.85rem",
+    padding: "0.4rem 1.2rem", // Balanced padding to maintain uniform pill scaling
     background: "transparent",
-    border: "1px solid rgba(57,211,83,0.2)",
-    borderRadius: "6px",
+    border: "1px solid rgba(57,211,83,0.3)", // Slightly increased opacity for better retro visibility
     color: "#39d353",
-    fontSize: "0.78rem",
+    
+    // 🚀 MATCHED PILL & PIXEL LOOK
+    borderRadius: "50px",
+    fontFamily: "'VT323', monospace",
+    fontSize: "1.1rem",
+    letterSpacing: "0.05em",
+    
     cursor: "pointer",
-    fontFamily: "inherit",
+    transition: "all 0.2s ease", // Added smooth interaction response
   },
   layout: {
     position: "relative",
@@ -772,7 +793,7 @@ const s = {
   },
   editorPanel: {
     flex: 1,
-    backdropFilter: "blur(12px)",
+    backdropFilter: "blur(5px)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -788,7 +809,7 @@ const s = {
     overflow: "hidden",
   },
   commentsTitle: {
-    color: "#39d353",
+    color: "grey",
     fontSize: "0.78rem",
     fontWeight: 700,
     letterSpacing: "0.08em",
@@ -834,7 +855,7 @@ const s = {
     gap: "0.5rem",
   },
   addCommentTitle: {
-    color: "#39d353",
+    color: "grey",
     fontSize: "0.72rem",
     fontWeight: 700,
     letterSpacing: "0.08em",
@@ -869,14 +890,20 @@ const s = {
   commentBtn: {
     width: "100%",
     padding: "0.55rem",
-    background: "rgba(57,211,83,0.15)",
+    background: "linear-gradient(135deg, #090d0a 0%, #111813 35%, #0b100c 70%, #162219 100%)",
+    border: "1px solid #233528",
+    borderTop: "1px solid #3a543f", // Simulated light hitting the top metallic lip
+    borderLeft: "1px solid #2d4333",
+    boxShadow: "0 12px 40px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    backdropFilter: "none", // Dropping the glass blur for a solid hardware feel
+    WebkitBackdropFilter: "none",
     border: "1px solid rgba(57,211,83,0.3)",
     borderRadius: "6px",
-    color: "#39d353",
-    fontSize: "0.82rem",
+    color: "grey",
+    fontSize: "1rem",
     fontWeight: 700,
     cursor: "pointer",
-    fontFamily: "inherit",
+    fontFamily: "'VT323', monospace",
   },
   sharePopover: {
     position: "absolute",
@@ -966,6 +993,13 @@ const s = {
     background: "rgba(0,0,0,0.8)",
     display: "flex",
     flexDirection: "column",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace",
+    
+    fontSize: "13px",                 
+    lineHeight: "1.5",                
+    letterSpacing: "normal",
+    WebkitFontSmoothing: "antialiased", 
+    MozOsxFontSmoothing: "grayscale",
   },
   outputHeader: {
     display: "flex",
