@@ -1,4 +1,4 @@
-from auth import hash_password, verify_password, create_token, decode_token
+from auth import hash_password, verify_password, create_access_token, decode_token
 from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -34,8 +34,8 @@ def login(data: LoginReq, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
     if not user or not verify_password(data.password,user.password):
         raise HTTPException(status_code=400,detail="Invalid Email or Password")
-    token = create_token({"user_id": user.id, "email": user.email,"name": user.name})
-    return {"token": token, "user_id": user.id}
+    token = create_access_token({"user_id": user.id, "email": user.email,"name": user.name})
+    return {"user_id": user.id,"user_name": user.name,"email": user.email,"message": user.is_active}
 
 security = HTTPBearer()
 
