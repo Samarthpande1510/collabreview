@@ -25,6 +25,26 @@ services:
     volumes:
     - postgres_data:/var/lib/postgresql/data
 
+  collabreview-redis:
+    image: redis:7-alpine
+
+    healthcheck:
+      test: ["CMD-SHELL","redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+    ports:
+    - "6379:6379"
+
+    restart: unless-stopped
+
+    volumes:
+    - redis_data:/data
+
 volumes:
   postgres_data:
+  redis_data:
+
 
