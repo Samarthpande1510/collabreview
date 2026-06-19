@@ -8,16 +8,13 @@ import Room from "./components/Room";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
-// ── Join redirect component — must be outside App ──────────────────────────
 function JoinRedirect({ user }) {
   const { token } = useParams();
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get(`${API_URL}/rooms/join/${token}`)
+    axios.get(`${API_URL}/rooms/join/${token}`, { withCredentials: true })
       .then(res => {
-        // Store token for this room so guest stays joined on refresh
-        localStorage.setItem(`cr_room_${res.data.room_id}`, token);
         navigate(`/rooms/${res.data.room_id}`);
       })
       .catch(() => {
@@ -33,29 +30,30 @@ function JoinRedirect({ user }) {
   );
 }
 
-// ── Main App ───────────────────────────────────────────────────────────────
 function App() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("cr_token");
-    const userId = localStorage.getItem("cr_user_id");
-    if (token && userId) {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      setUser({ token, userId, name: payload.name });
-    }
-  }, []);
+  axios.get(`${API_URL}/users/me`, { withCredentials: true })
+    .then(res => {
+      setUser({
+        userId: res.data.user_id,
+        name: res.data.user_name,
+        email: res.data.email,
+      });
+    })
+    .catch(() => {
+    });
+}, []);
 
-  const handleLogin = (token, userId) => {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    setUser({ token, userId, name: payload.name });
+  const handleLogin = (userName,userEmail,userId) => {
+    setUser({userId,name: userName,email: userEmail});
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("cr_token");
-    localStorage.removeItem("cr_user_id");
-    setUser(null);
-  };
+  axios.post(`${API_URL}/users/logout`, {}, { withCredentials: true })
+    .finally(() => setUser(null));
+};
 
 
   return (

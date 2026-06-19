@@ -48,9 +48,7 @@ export default function Rooms({ user, onLogout }) {
   // ── Fetch rooms ────────────────────────────────────────────────────────────
   const fetchRooms = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/rooms/`, {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
+      const res = await axios.get(`${API_URL}/rooms/`, { withCredentials: true });
       setRooms(res.data);
     } catch (e) {
       console.error("Failed to fetch rooms", e);
@@ -90,9 +88,9 @@ export default function Rooms({ user, onLogout }) {
     setError("");
     try {
       await axios.post(`${API_URL}/rooms/create`,
-        { name: roomName, language: language.toLowerCase() },
-        { headers: { Authorization: `Bearer ${user.token}` } }
-      );
+          { name: roomName, language: language.toLowerCase() },
+          { withCredentials: true }
+        );
       setShowPopover(false);
       setRoomName("");
       setLanguage("");
@@ -120,7 +118,7 @@ export default function Rooms({ user, onLogout }) {
   if (!window.confirm("Reset share link? Old link will stop working.")) return;
   try {
     await axios.post(`${API_URL}/rooms/${roomId}/reset-token`, {}, {
-      headers: { Authorization: `Bearer ${user.token}` }
+      withCredentials: true
     });
     fetchRooms(); // ← refreshes cards with new token
   } catch (e) {
@@ -131,9 +129,9 @@ export default function Rooms({ user, onLogout }) {
   if (!window.confirm("Delete this room?")) return;
   try {
     await axios.delete(`${API_URL}/rooms/${roomId}`, {
-      headers: { Authorization: `Bearer ${user.token}` }
+      withCredentials: true
     });
-    fetchRooms(); // ← refresh the grid
+    fetchRooms();
   } catch (e) {
     showToast("Failed to delete room");
   }

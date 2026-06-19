@@ -1,6 +1,5 @@
 from pydantic import BaseModel
-from fastapi import APIRouter, HTTPException, Security, Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
 from auth import decode_token
 from database import get_db
@@ -9,7 +8,6 @@ from connection_manager import manager
 import json
 
 router = APIRouter()
-security = HTTPBearer()
 
 class CommentCreate(BaseModel):
     line_number: int
@@ -19,11 +17,13 @@ class CommentCreate(BaseModel):
 async def addComment(
     room_id: int,
     data: CommentCreate,
-    credentials: HTTPAuthorizationCredentials = Security(security),
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    token = credentials.credentials
-    payload = decode_token(token=token)
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Invalid Token")
+    payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid Token")
     user_id = payload["user_id"]
@@ -63,10 +63,12 @@ async def addComment(
 @router.get("/room/{room_id}")
 async def getComment(
     room_id: int,
-    credentials: HTTPAuthorizationCredentials = Security(security),
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    token = credentials.credentials
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Invalid Token")
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid Token")
@@ -88,10 +90,12 @@ async def getComment(
 @router.delete("/{comment_id}")
 async def deleteComment(
     comment_id: int,
-    credentials: HTTPAuthorizationCredentials = Security(security),
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    token = credentials.credentials
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Invalid Token")
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid Token")

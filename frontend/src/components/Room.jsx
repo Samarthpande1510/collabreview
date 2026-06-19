@@ -35,7 +35,7 @@ export default function Room({ user, onLogout }) {
   const [commentText, setCommentText] = useState("");
   const [addingComment, setAddingComment] = useState(false);
 
-  // ✅ NEW: file import ref
+  // file import ref
   const fileInputRef = useRef(null);
 
   const wsRef = useRef(null);
@@ -60,25 +60,25 @@ export default function Room({ user, onLogout }) {
     sql: { id: 82, name: "SQL (SQLite 3.31.1)" },
   };
 
-  // ── fetchComments FIRST before any useEffect that uses it ─────────────────
+  // fetchComments FIRST before any useEffect that uses it
   const fetchComments = useCallback(async () => {
     try {
       const res = await axios.get(`${API_URL}/comments/room/${roomId}`, {
-        headers: { Authorization: `Bearer ${user.token}` }
+        withCredentials: true
       });
       setComments(res.data);
     } catch (e) {
       console.error("Failed to fetch comments", e);
     }
-  }, [roomId, user.token]);
+  }, [roomId]);
 
-  // ── Fetch room ─────────────────────────────────────────────────────────────
+  // Fetch room
   useEffect(() => {
     const fetchRoom = async () => {
       console.log("fetching room:", roomId, "user:", user.userId)
       try {
         const res = await axios.get(`${API_URL}/rooms/info/${roomId}`, {
-          headers: { Authorization: `Bearer ${user.token}` }
+          withCredentials: true
         });
         setRoom(res.data);
         setCode(res.data.code_content || "# Start coding here...");
@@ -88,31 +88,14 @@ export default function Room({ user, onLogout }) {
         );
       } catch (e) {
         console.log("fetchRoom error:", e.response?.status, e.message)
-        if (e.response?.status === 403) {
-          const storedToken = localStorage.getItem(`cr_room_${roomId}`);
-          if (storedToken) {
-            try {
-              const res = await axios.get(`${API_URL}/rooms/join/${storedToken}`);
-              setRoom(res.data);
-              setCode(res.data.code_content || "# Start coding here...");
-              setCanEdit(res.data.share_mode === "editor");
-            } catch {
-              localStorage.removeItem(`cr_room_${roomId}`);
-              navigate("/rooms");
-            }
-          } else {
-            navigate("/rooms");
-          }
-        } else {
-          navigate("/rooms");
-        }
+        navigate("/rooms");
       }
       setLoading(false);
     };
     fetchRoom();
   }, [roomId, user, navigate]);
 
-  // ── Fetch comments on mount ────────────────────────────────────────────────
+  // Fetch comments on mount
   useEffect(() => { fetchComments(); }, [fetchComments]);
 
   useEffect(() => {
@@ -126,14 +109,13 @@ export default function Room({ user, onLogout }) {
     return () => window.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // ── WebSocket ──────────────────────────────────────────────────────────────
+  // WebSocket
   useEffect(() => {
     let ws;
     const timer = setTimeout(() => {
-      // ✅ FIX: use wss when on https, ws otherwise
       const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
       ws = new WebSocket(
-        `${wsProtocol}://${window.location.hostname}:8000/ws/${roomId}?token=${user.token}`
+        `${wsProtocol}://${window.location.hostname}:8000/ws/${roomId}`
       );
       wsRef.current = ws;
 
@@ -179,9 +161,9 @@ export default function Room({ user, onLogout }) {
       clearTimeout(timer);
       ws?.close();
     };
-  }, [roomId, user.token, fetchComments]);
+  }, [roomId, fetchComments, user.userId]);
 
-  // ── Auto-save ──────────────────────────────────────────────────────────────
+  // Auto-save
   const handleCodeChange = (value) => {
     setCode(value);
     console.log("code changed, canEdit:", canEdit)
@@ -193,7 +175,7 @@ export default function Room({ user, onLogout }) {
       try {
         await axios.patch(`${API_URL}/rooms/${roomId}/code`,
           { code_content: value },
-          { headers: { Authorization: `Bearer ${user.token}` } }
+          { withCredentials: true }
         );
       } catch (e) {
         console.error("Auto-save failed", e);
@@ -208,7 +190,7 @@ export default function Room({ user, onLogout }) {
       const res = await axios.post(
         `${API_URL}/rooms/${roomId}/reset-token`,
         { share_mode: mode },
-        { headers: { Authorization: `Bearer ${user.token}` } }
+        { withCredentials: true }
       );
       setRoom(prev => ({ ...prev, share_token: res.data.share_token, share_mode: res.data.share_mode }));
       showToast(`New ${mode} link generated!`);
@@ -218,7 +200,7 @@ export default function Room({ user, onLogout }) {
     setShareLoading(false);
   };
 
-  // ── Download ───────────────────────────────────────────────────────────────
+  // Download
   const handleDownload = () => {
     const extensions = {
       python: "py", javascript: "js", typescript: "ts",
@@ -237,12 +219,11 @@ export default function Room({ user, onLogout }) {
     URL.revokeObjectURL(url);
   };
 
-  // ✅ NEW: File import handler — reads any text/code file into the editor
+  // File import handler
   const handleFileImport = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Guard: warn if file seems too large (>500KB)
     if (file.size > 500 * 1024) {
       showToast("File too large (max 500KB)");
       e.target.value = "";
@@ -254,7 +235,6 @@ export default function Room({ user, onLogout }) {
       const content = ev.target.result;
       setCode(content);
       showToast(`Imported: ${file.name}`);
-      // Trigger auto-save if user can edit
       if (canEdit) {
         clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(async () => {
@@ -262,7 +242,7 @@ export default function Room({ user, onLogout }) {
           try {
             await axios.patch(`${API_URL}/rooms/${roomId}/code`,
               { code_content: content },
-              { headers: { Authorization: `Bearer ${user.token}` } }
+              { withCredentials: true }
             );
           } catch (err) {
             console.error("Auto-save after import failed", err);
@@ -274,12 +254,10 @@ export default function Room({ user, onLogout }) {
     reader.onerror = () => showToast("Failed to read file");
     reader.readAsText(file);
 
-    // Reset so the same file can be re-imported if needed
     e.target.value = "";
   };
 
-  // ── Run code ───────────────────────────────────────────────────────────────
-  // ── Run code ───────────────────────────────────────────────────────────────
+  // Run code
   const handleRun = async () => {
 
     const currentLangName = room?.language?.toLowerCase() || "";
@@ -325,7 +303,6 @@ export default function Room({ user, onLogout }) {
       const stderr = data.stderr || data.compile_output || "";
       const statusCode = data.status?.id === 3 ? 0 : data.status?.id || 1;
 
-      // Detect if program was waiting for stdin input
       const errorText = (stderr + stdout).toLowerCase();
       const needsInput =
         errorText.includes("eoferror") ||
@@ -334,13 +311,12 @@ export default function Room({ user, onLogout }) {
         errorText.includes("fatal error: broken pipe");
 
       if (needsInput) {
-        // ✅ FIX: showInputPanel is now correctly set here (post-run) and controls the UI
         setShowInputPanel(true);
         setOutput({
           stdout: stdout,
           stderr: stderr,
           code: statusCode,
-          error: "⚠️ This program requires user input. Please provide it below and click Run again."
+          error: "This program requires user input. Please provide it below and click Run again."
         });
       } else {
         setOutput({ stdout, stderr, code: statusCode });
@@ -352,14 +328,14 @@ export default function Room({ user, onLogout }) {
     setRunning(false);
   };
 
-  // ── Add comment ────────────────────────────────────────────────────────────
+  // Add comment
   const handleAddComment = async () => {
     if (!commentLine || !commentText) return;
     setAddingComment(true);
     try {
       await axios.post(`${API_URL}/comments/${roomId}`,
         { line_number: parseInt(commentLine), content: commentText },
-        { headers: { Authorization: `Bearer ${user.token}` } }
+        { withCredentials: true }
       );
       setCommentLine("");
       setCommentText("");
@@ -370,11 +346,11 @@ export default function Room({ user, onLogout }) {
     setAddingComment(false);
   };
 
-  // ── Delete comment ─────────────────────────────────────────────────────────
+  // Delete comment
   const handleDeleteComment = async (commentId) => {
     try {
       await axios.delete(`${API_URL}/comments/${commentId}`, {
-        headers: { Authorization: `Bearer ${user.token}` }
+        withCredentials: true
       });
       await fetchComments();
     } catch (e) {
@@ -403,7 +379,6 @@ export default function Room({ user, onLogout }) {
     <div style={s.page}>
       <div style={s.overlay} />
 
-      {/* --- 1. TOAST NOTIFICATION FLOATER --- */}
       {toast && (
         <div style={{
           position: "fixed",
@@ -423,7 +398,6 @@ export default function Room({ user, onLogout }) {
         </div>
       )}
 
-      {/* --- 2. GLOBAL FIXED HEADER BAR --- */}
       <div style={s.topBar}>
         <div style={s.topLeft}>
           <span style={s.roomName}>{room?.name}</span>
@@ -442,7 +416,6 @@ export default function Room({ user, onLogout }) {
             ))}
           </div>
 
-          {/* Action Cluster */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", position: "relative" }}>
             <button
               ref={shareBtnRef}
@@ -458,10 +431,10 @@ export default function Room({ user, onLogout }) {
                 color: running ? "#8b949e" : "#39d353",
                 borderColor: running ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg, #090d0a 0%, #111813 35%, #0b100c 70%, #162219 100%)",
                 border: "1px solid #233528",
-                borderTop: "1px solid #3a543f", // Simulated light hitting the top metallic lip
+                borderTop: "1px solid #3a543f",
                 borderLeft: "1px solid #2d4333",
                 boxShadow: "0 12px 40px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
-                backdropFilter: "none", // Dropping the glass blur for a solid hardware feel
+                backdropFilter: "none",
                 WebkitBackdropFilter: "none",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace",
                 fontSize: "0.9rem"
@@ -512,7 +485,6 @@ export default function Room({ user, onLogout }) {
             )}
           </div>
 
-          {/* ✅ NEW: Hidden file input + Import button */}
           <input
             ref={fileInputRef}
             type="file"
@@ -533,10 +505,8 @@ export default function Room({ user, onLogout }) {
         </div>
       </div>
 
-      {/* --- 3. MAIN CO-WORKING WORKSPACE CONTAINER --- */}
       <div style={s.layout}>
 
-        {/* --- LEFT: EDITOR & OUTPUT DOCK --- */}
         <div style={s.editorPanel}>
           <div style={{ flex: 1, minHeight: 0, height: "100%" }}>
             <Editor
@@ -559,8 +529,6 @@ export default function Room({ user, onLogout }) {
             />
           </div>
 
-          {/* ✅ FIX: Input panel now ONLY shows when showInputPanel=true (set post-run),
-               completely removed the static code.includes() detector */}
           {showInputPanel && (
             <div style={s.inputPanel}>
               <div style={s.inputHeader}>
@@ -583,7 +551,6 @@ export default function Room({ user, onLogout }) {
             </div>
           )}
 
-          {/* Output panel */}
           {showOutput && (
             <div style={s.outputPanel}>
               <div style={s.outputHeader}>
@@ -606,7 +573,6 @@ export default function Room({ user, onLogout }) {
           )}
         </div>
 
-        {/* --- RIGHT: COMMENTS SIDEBAR --- */}
         <div style={s.commentsPanel}>
           <p style={s.commentsTitle}>Comments</p>
           <div style={s.commentsList}>
@@ -740,10 +706,10 @@ const s = {
     padding: "0.4rem 1.2rem", 
     background: "linear-gradient(135deg, #090d0a 0%, #111813 35%, #0b100c 70%, #162219 100%)",
     border: "1px solid #233528",
-    borderTop: "1px solid #3a543f", // Simulated light hitting the top metallic lip
+    borderTop: "1px solid #3a543f",
     borderLeft: "1px solid #2d4333",
     boxShadow: "0 12px 40px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
-    backdropFilter: "none", // Dropping the glass blur for a solid hardware feel
+    backdropFilter: "none",
     WebkitBackdropFilter: "none",
     color: "#ffffff",
     borderRadius: "50px", 
@@ -758,31 +724,25 @@ const s = {
     background: "rgba(255,255,255,0.05)",
     border: "1px solid rgba(255,255,255,0.1)",
     color: "#ffffff",
-    
-    // 🚀 RETRO PILL CONFIGURATIONS
     borderRadius: "50px", 
     fontFamily: "'VT323', monospace",
     fontSize: "1.1rem", 
     letterSpacing: "0.05em",
-    
     cursor: "pointer",
     transition: "all 0.2s ease",
   },
   
   backBtn: {
-    padding: "0.4rem 1.2rem", // Balanced padding to maintain uniform pill scaling
+    padding: "0.4rem 1.2rem",
     background: "transparent",
-    border: "1px solid rgba(57,211,83,0.3)", // Slightly increased opacity for better retro visibility
+    border: "1px solid rgba(57,211,83,0.3)",
     color: "#39d353",
-    
-    // 🚀 MATCHED PILL & PIXEL LOOK
     borderRadius: "50px",
     fontFamily: "'VT323', monospace",
     fontSize: "1.1rem",
     letterSpacing: "0.05em",
-    
     cursor: "pointer",
-    transition: "all 0.2s ease", // Added smooth interaction response
+    transition: "all 0.2s ease",
   },
   layout: {
     position: "relative",
@@ -892,12 +852,11 @@ const s = {
     padding: "0.55rem",
     background: "linear-gradient(135deg, #090d0a 0%, #111813 35%, #0b100c 70%, #162219 100%)",
     border: "1px solid #233528",
-    borderTop: "1px solid #3a543f", // Simulated light hitting the top metallic lip
+    borderTop: "1px solid #3a543f",
     borderLeft: "1px solid #2d4333",
     boxShadow: "0 12px 40px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
-    backdropFilter: "none", // Dropping the glass blur for a solid hardware feel
+    backdropFilter: "none",
     WebkitBackdropFilter: "none",
-    border: "1px solid rgba(57,211,83,0.3)",
     borderRadius: "6px",
     color: "grey",
     fontSize: "1rem",
@@ -994,7 +953,6 @@ const s = {
     display: "flex",
     flexDirection: "column",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace",
-    
     fontSize: "13px",                 
     lineHeight: "1.5",                
     letterSpacing: "normal",
