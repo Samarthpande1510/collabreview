@@ -56,15 +56,15 @@ def getroom(request: Request, db: Session = Depends(get_db)):
         for r in rooms
     ]
 
-@router.get("/info/{share_token}")
-def room_info(share_token: str,request: Request, db: Session = Depends(get_db)):
+@router.get("/info/{room_id}")
+def room_info(room_id: int, request: Request, db: Session = Depends(get_db)):
     token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=401, detail="Invalid Token")
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
-    room = db.query(Room).filter(Room.share_token == share_token).first()
+    room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
     return {
@@ -180,11 +180,12 @@ async def update_code(
     room.code_content = data.code_content
     db.commit()
     try:
+        print(f"BROADCASTING code_update to room {room_id}, type: {type(room_id)}")
         await manager.broadcast(int(room_id), json.dumps({
             "type": "code_update",
             "code": data.code_content,
             "user_id": user_id
         }))
+        print("BROADCAST SUCCEEDED")
     except Exception as e:
         print(f"Broadcast error: {e}")
-    return {"message": "Code saved", "room_id": room_id}

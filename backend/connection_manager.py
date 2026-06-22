@@ -40,7 +40,11 @@ class ConnectionManager:
     
     async def get_redis(self):
         if self._redis is None:
-            self._redis = Redis.from_url(os.getenv("REDIS_URL"))
+            self._redis = Redis.from_url(
+    os.getenv("REDIS_URL"),
+    health_check_interval=30,
+    socket_keepalive=True,
+)
         return self._redis
 
     async def broadcast(self, room_id: int, message: str):

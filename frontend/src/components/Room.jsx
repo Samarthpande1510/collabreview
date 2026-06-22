@@ -5,7 +5,7 @@ import axios from "axios";
 import React from 'react';
 
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_URL = process.env.REACT_APP_API_URL ?? "http://localhost:8000";
 
 export default function Room({ user, onLogout }) {
   const { roomId } = useParams();
@@ -115,7 +115,7 @@ export default function Room({ user, onLogout }) {
     const timer = setTimeout(() => {
       const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
       ws = new WebSocket(
-        `${wsProtocol}://${window.location.hostname}:8000/ws/${roomId}`
+        `${wsProtocol}://${window.location.hostname}/ws/${roomId}`
       );
       wsRef.current = ws;
 

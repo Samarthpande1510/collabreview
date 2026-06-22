@@ -6,7 +6,7 @@ import Home from "./components/Home";
 import Rooms from "./components/Rooms";
 import Room from "./components/Room";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_URL = process.env.REACT_APP_API_URL ?? "http://localhost:8000";
 
 function JoinRedirect({ user }) {
   const { token } = useParams();

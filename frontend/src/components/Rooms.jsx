@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "./Navbar";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_URL = process.env.REACT_APP_API_URL ?? "http://localhost:8000";
 
 const LANGUAGES = [
   // Web
@@ -54,7 +54,7 @@ export default function Rooms({ user, onLogout }) {
       console.error("Failed to fetch rooms", e);
     }
     setLoading(false);
-  }, [user.token]);
+  }, []);
 
   useEffect(() => { fetchRooms(); }, [fetchRooms]);
 
@@ -107,7 +107,7 @@ export default function Rooms({ user, onLogout }) {
     if (!shareToken) return;
     setJoining(true);
     try {
-      const res = await axios.get(`${API_URL}/rooms/join/${shareToken}`);
+      const res = await axios.get(`${API_URL}/rooms/join/${shareToken}`,{withCredentials: true});
       navigate(`/rooms/${res.data.room_id}`);
     } catch (e) {
       showToast("Invalid or expired share token");
